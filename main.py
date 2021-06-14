@@ -1,16 +1,28 @@
-# This is a sample Python script.
+import math
+from collections import Counter
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import numpy as np
+import pandas as pd
+from matplotlib import pyplot as plt
+from sklearn.linear_model import LinearRegression
+
+df = pd.read_csv('data/DATA_2.csv', delimiter=',', parse_dates=['Datetime'])
+
+from model import indicator
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 
+GRC = indicator.gutenberg_richter_curve(df.Magnitude)
+x = GRC.mapped_mag[:,0]
+y = GRC.mapped_mag[:,1]
+popt=(GRC.a,GRC.b)
+plt.figure()
+plt.plot(x, y, 'ko', label="Original Noised Data")
+plt.plot(x, GRC.gutenberg_richter_law(x, *popt), 'r-', label="Fitted Curve")
+plt.legend()
+plt.show()
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+popt

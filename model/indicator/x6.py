@@ -1,0 +1,1 @@
+# Maximum magnitude earthquake recorded during last week

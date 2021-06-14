@@ -1,0 +1,1 @@
+# Total recurrence time between earthquake magnitudes
