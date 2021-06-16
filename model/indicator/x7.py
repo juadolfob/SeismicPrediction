@@ -1,1 +1,0 @@
-# Probability of occurring a magnitude larger than or equal to 6.0

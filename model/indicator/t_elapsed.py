@@ -1,1 +1,0 @@
-# Time elapsed for last “n” seismic events

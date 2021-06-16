@@ -1,1 +1,0 @@
-# Seismic rate change proposed by Habermann and Wyss
