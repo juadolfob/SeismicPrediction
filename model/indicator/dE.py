@@ -1,1 +1,0 @@
-# Rate of square root of energy

@@ -8,14 +8,14 @@ from sklearn.linear_model import LinearRegression
 
 df = pd.read_csv('data/DATA_2.csv', delimiter=',', parse_dates=['Datetime'])
 
-from model import indicator
+from model import features
 
 
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
-GRC = indicator.gutenberg_richter_curve(df.Magnitude)
+GRC = features.gutenberg_richter_curve(df.Magnitude)
 x = GRC.mapped_mag[:,0]
 y = GRC.mapped_mag[:,1]
 popt=(GRC.a,GRC.b)
