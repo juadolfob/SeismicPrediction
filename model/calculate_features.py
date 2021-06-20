@@ -1,6 +1,8 @@
 # Slope of Gutenberg-Richter curve
 import math
+
 import numpy as np
+import numpy_ext as npext
 import pandas as pd
 from numpy import longdouble, int8
 from scipy.optimize import curve_fit
@@ -10,7 +12,14 @@ class CalculateFeatures:
 
     def __init__(self, df, n):
 
+        # self variables
         self.n = n
+        all_dates = np.array(df.Datetime, dtype="datetime64[s]")
+        all_magnitudes = np.array(df.Magnitude)
+        self.total_events = len(df.index)
+        self.a, self.b = self.gutenberg_richter_curve_fit(all_magnitudes)
+
+
 
         # Features
 
@@ -29,13 +38,15 @@ class CalculateFeatures:
         rateSqrtEnergy      -:  Rate of square root of energy
         meanTDiff           -:  Mean of the differences of the times of the events
         maxMag              -:  Max magnitude
-        seismicRateChange   -:  Seismic rate change proposed by Habermann and Wyss
+        zSeismicRateChange  -:  Seismic rate change proposed by Habermann and Wyss
+        bSeismicRateChange  -:  Seismic rate change proposed by Matthews and Reasenberg
         last7dMaxMag        -:  Max magnitude in the last 7 days
         next7dMaxMag        -:  Max magnitude in the next 7 days
         next14dMaxMag       -:  Max magnitude in the next 14 days
         
         """
-        self._f1_columns = ["firstT",
+        self._f1_columns = ["old_index",
+                            "firstT",
                             "lastT",
                             "meanMag",
                             "a",
@@ -46,32 +57,39 @@ class CalculateFeatures:
                             "maxMag",
                             ]
 
-        self.features = pd.DataFrame([self._apply_features_agg(w) for w in df.rolling(n, min_periods=n) if len(w.index)==n],
-                                     columns=self._f1_columns)
+        self.features = pd.DataFrame(
+            [self._apply_features_agg(w) for w in df.rolling(n, min_periods=n) if len(w.index) == n],
+            columns=self._f1_columns)
 
         # Vectorization of Features
 
-        all_dates = np.array(df.Datetime, dtype="datetime64[s]")
-        all_magnitudes = np.array(np.array(df.Magnitude))
+        def _rolling_2_features_apply(_rolling_2_index):
+            z_seismic_rate_change = [np.NaN]
+            b_seismic_rate_change = [np.NaN]
+            for index in _rolling_2_indexes:
+                array_elapsed_T = np.array(self.features.elapsedT.iloc[index])
+                z_seismic_rate_change.append(self.z_seismic_rate_change(array_elapsed_T))
+                b_seismic_rate_change.append(self.b_seismic_rate_change(array_elapsed_T))
+            return (z_seismic_rate_change,
+                    b_seismic_rate_change)
 
-        """
-        self.features["seismicRateChange"] = npext.rolling_apply(
-            self.seismic_rate_change,
-            2,
-            np.array(self.features.elapsedT)
-        )
+        _rolling_2_indexes = npext.rolling(np.array(self.features.index.to_numpy()), 2, as_array=True, skip_na=True)
 
-        self.features["last7dMaxMag"] = self._dt_max_magnitude(self.features.firstT, np.timedelta64(-7, 'D'), all_dates,
+        self.features[["zSeismicRateChange",
+                       "bSeismicRateChange"]] = np.array(_rolling_2_features_apply(_rolling_2_indexes)).T
+
+        self.features["last7dMaxMag"] = self._dt_max_magnitude(self.features.lastT, np.timedelta64(-7, 'D'), all_dates,
                                                                all_magnitudes)
 
-        self.features["next7dMaxMag"] = self._dt_max_magnitude(self.features.lastT, np.timedelta64(7, 'D'), all_dates,
-                                                               all_magnitudes)
-        """
+        self.features["next14dMaxMag"] = self._dt_max_magnitude(self.features.lastT, np.timedelta64(14, 'D'), all_dates,
+                                                                all_magnitudes)
+        # todo cut fron and back row < 7 days from limits
+        self.features.drop([0, len(self.features.index) - 1], axis=0, inplace=True)
 
     def _apply_features_agg(self, df_group):
+        old_index = df_group.index.stop - 1
         datetime_array = np.array(df_group.Datetime, dtype='datetime64[s]')
         magnitudes_array = np.array(df_group.Magnitude)
-
         T = self.elapsed_time(datetime_array)
         if len(df_group.index) >= self.n:
             a, b = self._gutenberg_richter_curve_fit(magnitudes_array)
@@ -83,6 +101,7 @@ class CalculateFeatures:
         max_mag = np.max(magnitudes_array)
 
         return [
+            old_index,
             datetime_array[0],
             datetime_array[-1],
             meanMag,
@@ -125,7 +144,19 @@ class CalculateFeatures:
         unique, counts = np.unique(magnitude, return_counts=True)
         view = np.flip(counts, 0)
         np.cumsum(view, 0, out=view)
+        """ to print
+        import matplotlib.pyplot as plt
+        from scipy.optimize import curve_fit
+        a, b = curve_fit(CalculateFeatures.gutenberg_richter_law, unique, counts)[0]
 
+        x = unique
+        y = counts
+        plt.figure()
+        plt.plot(x, y, 'ko', label="Original Data")
+        plt.plot(x, CalculateFeatures.gutenberg_richter_law(x, a, b), 'r-', label="Fitted Curve")
+        plt.legend()
+        plt.show()
+        """
         return curve_fit(CalculateFeatures.gutenberg_richter_law, unique, counts)[0]
 
     #
@@ -157,8 +188,15 @@ class CalculateFeatures:
     # Z - # Seismic rate change proposed by Habermann and Wyss
     #
 
-    def seismic_rate_change(self, T):
+    def z_seismic_rate_change(self, T):
         return math.sqrt(self.n * abs(math.pow(T[0], 2) - math.pow(T[1], 2)) / (T[0] + T[1]))
+
+    #
+    # Z - # Seismic rate change proposed by Habermann and Wyss
+    #
+
+    def b_seismic_rate_change(self, T):
+        return (self.n * (T[1] - T[0])) / math.sqrt(self.n * T[0] + T[1])
 
     #
     # x6 ( DT_max_m )- # Maximum magnitude earthquake recorded between (Te-dT , Te)
