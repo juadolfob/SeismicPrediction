@@ -78,8 +78,7 @@ and better show the results.
 For building the model:
 
 * [Python](https://www.python.org/)
-<br>
-  Libraries:
+<br>Libraries:<br>
   * [pandas](https://pandas.pydata.org/)
   * [numpy](https://numpy.org/)
   * [numpy_ext](https://numpy_ext.org/)
