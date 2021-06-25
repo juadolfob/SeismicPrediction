@@ -9,16 +9,12 @@
 <h3 align="center">Seismic Insights in Mexico using Machine Learning</h3>
 
 <p align="center">
-    An awesome README template to jumpstart your projects!
+    -----------
     <br />
-    <a href="https://github.com/othneildrew/Best-README-Template"><strong>Explore the docs »</strong></a>
+    See the article with all the results <a href="https://docs.google.com/document/d/10OHSwhNoUojVWViDw_0w9KfLTqGH50FKe3zlH1BQNjU/edit?usp=sharing"><strong>Article »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/othneildrew/Best-README-Template">View Demo</a>
-    ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">Report Bug</a>
-    ·
-    <a href="https://github.com/othneildrew/Best-README-Template/issues">Request Feature</a>
+    See the <a href="https://github.com/juadolfob/SeismicPrediction/tree/master/notebooks">Notebooks</a>
 </p>
 
 <!-- TABLE OF CONTENTS -->
