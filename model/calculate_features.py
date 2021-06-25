@@ -1,5 +1,6 @@
 # Slope of Gutenberg-Richter curve
 import math
+from collections import Iterable
 
 import numpy as np
 import numpy_ext as npext
@@ -8,9 +9,10 @@ from numpy import longdouble, int8
 from scipy.optimize import curve_fit
 
 
+# noinspection SpellCheckingInspection
 class CalculateFeatures:
 
-    def __init__(self, df, n):
+    def __init__(self, df, n, trimFeatures=False, daysForward=14, daysBackward=7):
 
         # self variables
         self.n = n
@@ -18,9 +20,10 @@ class CalculateFeatures:
         all_magnitudes = np.array(df.Magnitude)
         self.total_events = len(df.index)
         self.a, self.b = self.gutenberg_richter_curve_fit(all_magnitudes)
-
-
-
+        self.firstT = np.datetime64(df.Datetime.iloc[0], "s")
+        self.lastT = np.datetime64(df.Datetime.iloc[-1], "s")
+        self.daysForward = np.timedelta64(daysForward, 'D')
+        self.daysBackward = np.timedelta64(daysBackward, 'D')
         # Features
 
         """
@@ -38,23 +41,25 @@ class CalculateFeatures:
         rateSqrtEnergy      -:  Rate of square root of energy
         meanTDiff           -:  Mean of the differences of the times of the events
         maxMag              -:  Max magnitude
+        magDef              -:  Magnitude deficit
         zSeismicRateChange  -:  Seismic rate change proposed by Habermann and Wyss
         bSeismicRateChange  -:  Seismic rate change proposed by Matthews and Reasenberg
-        last7dMaxMag        -:  Max magnitude in the last 7 days
-        next7dMaxMag        -:  Max magnitude in the next 7 days
-        next14dMaxMag       -:  Max magnitude in the next 14 days
-        
+        last[backDT]MaxMag  -:  Max magnitude in the last 'backDT' days
+        next[frontDT]MaxMag -:  Max magnitude in the next 'frontDT' days
         """
         self._f1_columns = ["old_index",
                             "firstT",
                             "lastT",
                             "meanMag",
+                            "maxMag",
+                            "magDef",
                             "a",
                             "b",
+                            "b_std",
+                            "grc_std",
                             "elapsedT",
                             "rateSqrtEnergy",
                             "meanTDiff",
-                            "maxMag",
                             ]
 
         self.features = pd.DataFrame(
@@ -73,45 +78,88 @@ class CalculateFeatures:
             return (z_seismic_rate_change,
                     b_seismic_rate_change)
 
-        _rolling_2_indexes = npext.rolling(np.array(self.features.index.to_numpy()), 2, as_array=True, skip_na=True)
+        _rolling_2_indexes = npext.rolling(self.features.index.to_numpy(), 2, as_array=True, skip_na=True)
 
         self.features[["zSeismicRateChange",
                        "bSeismicRateChange"]] = np.array(_rolling_2_features_apply(_rolling_2_indexes)).T
 
-        self.features["last7dMaxMag"] = self._dt_max_magnitude(self.features.lastT, np.timedelta64(-7, 'D'), all_dates,
-                                                               all_magnitudes)
+        # DELTA TIME FEATURES
 
-        self.features["next14dMaxMag"] = self._dt_max_magnitude(self.features.lastT, np.timedelta64(14, 'D'), all_dates,
-                                                                all_magnitudes)
-        # todo cut fron and back row < 7 days from limits
-        self.features.drop([0, len(self.features.index) - 1], axis=0, inplace=True)
+        features_lastT_array = np.array(self.features.lastT, dtype='datetime64[s]')
+
+        self.features["last" + str(daysBackward) + "dMaxMag"] = self._dt_max_magnitude(features_lastT_array,
+                                                                                       -self.daysBackward, all_dates,
+                                                                                       all_magnitudes)
+
+        self.features["next" + str(daysForward) + "dMaxMag"] = self._dt_max_magnitude(features_lastT_array,
+                                                                                      self.daysForward,
+                                                                                      all_dates,
+                                                                                      all_magnitudes)
+        if trimFeatures:
+            self._trim_features(features_lastT_array)
+
+        self.features.reset_index(inplace=True, drop=True)
 
     def _apply_features_agg(self, df_group):
         old_index = df_group.index.stop - 1
         datetime_array = np.array(df_group.Datetime, dtype='datetime64[s]')
         magnitudes_array = np.array(df_group.Magnitude)
         T = self.elapsed_time(datetime_array)
-        if len(df_group.index) >= self.n:
-            a, b = self._gutenberg_richter_curve_fit(magnitudes_array)
-        else:
-            a = b = np.NaN
+        n_events = len(df_group.index)
+        max_mag = np.max(magnitudes_array)
         meanMag = np.mean(magnitudes_array)
+
+        if n_events >= self.n:
+            unique, count = self._cumcount_sorted_unique(magnitudes_array)
+            a, b = self._gutenberg_richter_curve_fit(unique, count)
+            grc_std = self.mean_square_deviation(unique, count, n_events, a, b)
+            b_std = self._b_standard_deviation(unique, meanMag, n_events, b)
+        else:
+            unique = 0
+            count = 0
+            a = np.NaN
+            b = np.NaN
+            grc_std = np.NaN
+            b_std = np.NaN
+
         dE = self.rate_square_root_energy(magnitudes_array, T)
         u = self.mean_time_difference(datetime_array)
-        max_mag = np.max(magnitudes_array)
-
+        mag_def = self.magnitude_deficit(max_mag, a, b)
         return [
             old_index,
             datetime_array[0],
             datetime_array[-1],
             meanMag,
+            max_mag,
+            mag_def,
             a,
             b,
+            b_std,
+            grc_std,
             T,
             dE,
             u,
-            max_mag,
         ]
+
+    def get_trim_features(self):
+        features_lastT_array = np.array(self.features.lastT, dtype='datetime64[s]')
+        _dropindex = self._filter_index_dt(features_lastT_array)
+        return self.features.drop([0, len(self.features.index) - 1, *_dropindex], axis=0)
+
+    def trim_features(self):
+        features_lastT_array = np.array(self.features.lastT, dtype='datetime64[s]')
+        _dropindex = self._filter_index_dt(features_lastT_array)
+        self.features.drop([0, len(self.features.index) - 1, *_dropindex], axis=0, inplace=True)
+
+    def _trim_features(self, features_lastT_array):
+        _dropindex = self._filter_index_dt(features_lastT_array)
+        self.features.drop([0, len(self.features.index) - 1, *_dropindex], axis=0, inplace=True)
+
+    def _filter_index_dt(self, features_lastT_array):
+        return self.features[
+            ~  ((features_lastT_array > (self.firstT + self.daysBackward))
+                &
+                (features_lastT_array < (self.lastT - self.daysForward)))].index
 
     def get_n(self, magnitude):
         return self.gutenberg_richter_law(magnitude, self.a, self.b)
@@ -128,35 +176,40 @@ class CalculateFeatures:
         with np.errstate(over='ignore'):
             return np.power(10, a - b * m, dtype=longdouble)
 
-    def _gutenberg_richter_curve_fit(self, magnitude):
-        unique, counts = np.unique(magnitude, return_counts=True)
+    @staticmethod
+    def _cumcount_sorted_unique(array: Iterable, n: int = None):
+        unique, counts = np.unique(array, return_counts=True)
         view = np.flip(counts, 0)
+        if n:
+            if n <= 127:
+                np.cumsum(view, 0, dtype=int8, out=view)
+            else:
+                np.cumsum(view, 0, out=view)
+        np.cumsum(view, 0, out=view)
+        return unique, counts
 
-        if self.n <= 127:
-            np.cumsum(view, 0, dtype=int8, out=view)
-        else:
-            np.cumsum(view, 0, out=view)
+    """ to print
+            import matplotlib.pyplot as plt
+            from scipy.optimize import curve_fit
+            a, b = curve_fit(CalculateFeatures.gutenberg_richter_law, unique, counts)[0]
 
+            x = unique
+            y = counts
+            plt.figure()
+            plt.plot(x, y, 'ko', label="Original Data")
+            plt.plot(x, CalculateFeatures.gutenberg_richter_law(x, a, b), 'r-', label="Fitted Curve")
+            plt.legend()
+            plt.show()
+    """
+
+    @staticmethod
+    def _gutenberg_richter_curve_fit(unique, counts):
         return curve_fit(CalculateFeatures.gutenberg_richter_law, unique, counts)[0]
 
     @staticmethod
-    def gutenberg_richter_curve_fit(magnitude):
-        unique, counts = np.unique(magnitude, return_counts=True)
-        view = np.flip(counts, 0)
-        np.cumsum(view, 0, out=view)
-        """ to print
-        import matplotlib.pyplot as plt
-        from scipy.optimize import curve_fit
-        a, b = curve_fit(CalculateFeatures.gutenberg_richter_law, unique, counts)[0]
+    def gutenberg_richter_curve_fit(magnitude, n=None):
+        unique, counts = CalculateFeatures._cumcount_sorted_unique(magnitude, n)
 
-        x = unique
-        y = counts
-        plt.figure()
-        plt.plot(x, y, 'ko', label="Original Data")
-        plt.plot(x, CalculateFeatures.gutenberg_richter_law(x, a, b), 'r-', label="Fitted Curve")
-        plt.legend()
-        plt.show()
-        """
         return curve_fit(CalculateFeatures.gutenberg_richter_law, unique, counts)[0]
 
     #
@@ -185,26 +238,25 @@ class CalculateFeatures:
         return np.mean(np.diff(datetimes).astype(int))
 
     #
-    # Z - # Seismic rate change proposed by Habermann and Wyss
+    # Z - Seismic rate change proposed by Habermann and Wyss
     #
 
     def z_seismic_rate_change(self, T):
         return math.sqrt(self.n * abs(math.pow(T[0], 2) - math.pow(T[1], 2)) / (T[0] + T[1]))
 
     #
-    # Z - # Seismic rate change proposed by Habermann and Wyss
+    # Z - Seismic rate change proposed by Habermann and Wyss
     #
 
     def b_seismic_rate_change(self, T):
         return (self.n * (T[1] - T[0])) / math.sqrt(self.n * T[0] + T[1])
 
     #
-    # x6 ( DT_max_m )- # Maximum magnitude earthquake recorded between (Te-dT , Te)
+    # x6 ( DT_max_m ) - Maximum magnitude earthquake recorded between (Te-dT , Te)
     #
 
     @staticmethod
     def _dt_max_magnitude(eT_dates, dT, all_dates, all_magnitudes):
-
         def _positive_dt_filter(_eT):
             return ((_eT + dT) >= all_dates) & (all_dates > _eT)
 
@@ -214,17 +266,38 @@ class CalculateFeatures:
         dt_filter = _positive_dt_filter
         max_mag_dT = np.array([], dtype="float")
         if dT < 0:  # negative
-            max_mag_dT = np.append(max_mag_dT, [np.NaN])
             dt_filter = _negative_dt_filter
-            eT_dates = eT_dates[1:]
-        else:
-            eT_dates = eT_dates[:-1]
 
         for eT in eT_dates:
             eT = np.datetime64(eT, "s")
-            max_mag_dT = np.append(max_mag_dT, np.max(all_magnitudes[dt_filter(eT)]))
-
-        if dT > 0:  # positive:
-            max_mag_dT = np.append(max_mag_dT, [np.NaN])
+            filtered_mags = all_magnitudes[dt_filter(eT)]
+            if filtered_mags.size > 0:
+                max_mag_dT = np.append(max_mag_dT, np.max(filtered_mags))
+            else:
+                max_mag_dT = np.append(max_mag_dT, np.NaN)
 
         return max_mag_dT
+
+    #
+    #  ΔM ( magnitude_deficit ) - difference between the maximum actual magnitude and maximum expected magnitude
+    #
+
+    @staticmethod
+    def magnitude_deficit(max_mag, a, b):
+        return max_mag - a / b
+
+    #
+    #  η ( mean_square_deviation ) - difference between the maximum actual magnitude and maximum expected magnitude
+    #
+
+    @staticmethod
+    def mean_square_deviation(M, N, n, a, b):
+        return np.sum(np.power(np.log(N) - a - b * M, 2)) / n - 1
+
+    #
+    #  σb ( b_standard_deviation ) - Standard deviation of b-value
+    #
+
+    @staticmethod
+    def _b_standard_deviation(M, M_mean, n, b):
+        return 2.3 * math.pow(b, 2) * math.sqrt(np.sum(np.power(M - M_mean, 2)) / n * (n - 1))
