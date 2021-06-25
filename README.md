@@ -14,7 +14,9 @@
     See the article with all the results <a href="https://docs.google.com/document/d/10OHSwhNoUojVWViDw_0w9KfLTqGH50FKe3zlH1BQNjU/edit?usp=sharing"><strong>Article »</strong></a>
     <br />
     <br />
-    See the <a href="https://github.com/juadolfob/SeismicPrediction/tree/master/notebooks">Notebooks</a>
+    See the all <a href="https://github.com/juadolfob/SeismicPrediction/tree/master/notebooks">Notebooks</a>
+    or just the latest <a href="https://github.com/juadolfob/SeismicPrediction/blob/master/notebooks/testing/Untitled.ipynb">Notebook</a>
+    
 </p>
 
 <!-- TABLE OF CONTENTS -->
@@ -78,7 +80,7 @@ For scripting, data visualization and manipulation:
 
 ## Getting Started
 
-The insights are presented on jupyter notebooks running on python.
+The results are presented on jupyter notebooks running on python.
 
 ### Prerequisites
 
@@ -114,31 +116,5 @@ Email: juadolfob@gmail.com
 
 Project Link: [https://github.com/juadolfob/SeismicPrediction](https://github.com/juadolfob/SeismicPrediction)
 
-
-
-
-[contributors-shield]: https://img.shields.io/github/contributors/othneildrew/Best-README-Template.svg?style=for-the-badge
-
-[contributors-url]: https://github.com/othneildrew/Best-README-Template/graphs/contributors
-
-[forks-shield]: https://img.shields.io/github/forks/othneildrew/Best-README-Template.svg?style=for-the-badge
-
-[forks-url]: https://github.com/othneildrew/Best-README-Template/network/members
-
-[stars-shield]: https://img.shields.io/github/stars/othneildrew/Best-README-Template.svg?style=for-the-badge
-
-[stars-url]: https://github.com/othneildrew/Best-README-Template/stargazers
-
-[issues-shield]: https://img.shields.io/github/issues/othneildrew/Best-README-Template.svg?style=for-the-badge
-
-[issues-url]: https://github.com/othneildrew/Best-README-Template/issues
-
-[license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
-
-[license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
-
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-
-[linkedin-url]: https://linkedin.com/in/othneildrew
 
 [product-screenshot]: https://i.imgur.com/6IUXvcW.png
