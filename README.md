@@ -31,7 +31,6 @@
       <a href="#getting-started">Getting Started</a>
       <ul>
         <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
@@ -94,14 +93,6 @@ Python and some important libraries are needed, jupyter is necessary for visuali
   ```bash
   pip install jupyterlab
   ```
-### Installation
-
-1. Clone the repo
-   ```sh
-   git clone https://github.com/juadolfob/SeismicPrediction.git
-   ```
-
-<!-- USAGE EXAMPLES -->
 
 ## Usage
 
