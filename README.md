@@ -34,9 +34,9 @@
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
+    <li><a href="#results">Results</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgements">Acknowledgements</a></li>
   </ol>
 </details>
 
@@ -95,9 +95,8 @@ Python and some important libraries are needed, jupyter is necessary for visuali
   ```
 
 ## Usage
-
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos
-work well in this space. You may also link to more resources.
+## Results
+The latest result on this [notebook](https://github.com/juadolfob/SeismicPrediction/blob/master/notebooks/testing/Untitled.ipynb)
 
 _For more examples, please refer to the [example](https://example.com)_
 
