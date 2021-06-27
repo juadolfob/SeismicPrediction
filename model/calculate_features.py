@@ -32,34 +32,48 @@ class CalculateFeatures:
         Seismic events are grouped in 
         All following features are computed on every group:
         
+        ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+        
         firstT              -:  first date
         lastT               -:  last date
-        meanMag             -:  mean magnitude
-        a                   -:  y-intercept of Gutenberg-Richter curve
-        b                   -:  Slope of Gutenberg-Richter curve
-        elapsedT            -:  Time elapsed of the last 'n' seismic events
-        rateSqrtEnergy      -:  Rate of square root of energy
-        meanTDiff           -:  Mean of the differences of the times of the events
-        maxMag              -:  Max magnitude
-        magDef              -:  Magnitude deficit
-        zSeismicRateChange  -:  Seismic rate change proposed by Habermann and Wyss
-        bSeismicRateChange  -:  Seismic rate change proposed by Matthews and Reasenberg
-        last[backDT]MaxMag  -:  Max magnitude in the last 'backDT' days
-        next[frontDT]MaxMag -:  Max magnitude in the next 'frontDT' days
+        meanMag             -:  Mmean | mean magnitude
+        a                   -:  a | y-intercept of Gutenberg-Richter curve
+        b                   -:  b | Slope of Gutenberg-Richter curve
+        bStd                -:  σb | Standard deviation of b value
+        grcStd              -:  η | Mean square deviation
+        elapsedT            -:  T | Time elapsed of the last 'n' seismic events        
+        rateSqrtEnergy      -:  dE1/2 | Rate of square root of energy
+        meanT               -:  μ | Mean of the differences of the times of each event
+        meanTStd            -:  c | Standard Deviation of the differences of the times of each event
+        maxAMag             -:  Max actual magnitude
+        maxEMag             -:  Max expected magnitude
+        magDef              -:  ΔM | Magnitude deficit
+        zSeismicRateChange  -:  z | Seismic rate change proposed by Habermann and Wyss
+        bSeismicRateChange  -:  β | Seismic rate change proposed by Matthews and Reasenberg
+        last[backDT]MaxMag  -:  x6 | Max magnitude in the last [backDT] days
+        next[frontDT]MaxMag -:  Maxmagnitude in the next [frontDT] days
+        pMag[mag]           -:  x7 | Probability of an earthquaky euqual or greater than [mag]
+        
+        ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+        
         """
+
         self._f1_columns = ["old_index",
                             "firstT",
                             "lastT",
                             "meanMag",
-                            "maxMag",
+                            "maxAMag",
+                            "maxEMag",
                             "magDef",
                             "a",
                             "b",
-                            "b_std",
-                            "grc_std",
+                            "bStd",
+                            "grcStd",
                             "elapsedT",
                             "rateSqrtEnergy",
-                            "meanTDiff",
+                            "meanT",
+                            "meanTStd",
+                            "pMag6",
                             ]
 
         self.features = pd.DataFrame(
@@ -106,31 +120,33 @@ class CalculateFeatures:
         magnitudes_array = np.array(df_group.Magnitude)
         T = self.elapsed_time(datetime_array)
         n_events = len(df_group.index)
-        max_mag = np.max(magnitudes_array)
         meanMag = np.mean(magnitudes_array)
 
         if n_events >= self.n:
             unique, count = self._cumcount_sorted_unique(magnitudes_array)
             a, b = self._gutenberg_richter_curve_fit(unique, count)
             grc_std = self.mean_square_deviation(unique, count, n_events, a, b)
-            b_std = self._b_standard_deviation(unique, meanMag, n_events, b)
+            b_std = self._b_std(unique, meanMag, n_events, b)
         else:
-            unique = 0
-            count = 0
             a = np.NaN
             b = np.NaN
             grc_std = np.NaN
             b_std = np.NaN
 
+        max_actual_mag = np.max(magnitudes_array)
+        max_expected_mag = a / b
         dE = self.rate_square_root_energy(magnitudes_array, T)
         u = self.mean_time_difference(datetime_array)
-        mag_def = self.magnitude_deficit(max_mag, a, b)
+        mag_def = self.magnitude_deficit(max_actual_mag, a, b)
+        p_mag_6 = self.p_magnitude(b, 6.0)
+        c = self.mean_t_deviation(datetime_array, u)
         return [
             old_index,
             datetime_array[0],
             datetime_array[-1],
             meanMag,
-            max_mag,
+            max_actual_mag,
+            max_expected_mag,
             mag_def,
             a,
             b,
@@ -139,6 +155,8 @@ class CalculateFeatures:
             T,
             dE,
             u,
+            c,
+            p_mag_6,
         ]
 
     def get_trim_features(self):
@@ -221,7 +239,7 @@ class CalculateFeatures:
         return (datetimes_array[-1] - datetimes_array[0]).astype(int)
 
     #
-    # dE - Rate of Square Root of Energy
+    # dE1/2 - Rate of Square Root of Energy
     # ( 5.9 + .75 * m ) == sqrt( 11.8 + 1.5 * m )
     #
 
@@ -230,15 +248,23 @@ class CalculateFeatures:
         return np.sum(np.power(10, 5.9 + .75 * magnitude)) / t
 
     #
-    # U - Mean time between characteristic events
+    # μ - Mean time between characteristic events
     #
 
     @staticmethod
     def mean_time_difference(datetimes):
-        return np.mean(np.diff(datetimes).astype(int))
+        return np.mean(np.diff(datetimes).astype(float))
 
     #
-    # Z - Seismic rate change proposed by Habermann and Wyss
+    # c - Deviation from mean time
+    #
+
+    @staticmethod
+    def mean_t_deviation(datetimes, u):
+        return math.sqrt(np.sum(np.power(datetimes.astype(float) - u, 2))/len(datetimes)-1)
+
+    #
+    # z - Seismic rate change proposed by Habermann and Wyss
     #
 
     def z_seismic_rate_change(self, T):
@@ -295,9 +321,17 @@ class CalculateFeatures:
         return np.sum(np.power(np.log(N) - a - b * M, 2)) / n - 1
 
     #
-    #  σb ( b_standard_deviation ) - Standard deviation of b-value
+    #  σb ( b_standard_deviation , b_std ) - Standard deviation of b-value
     #
 
     @staticmethod
-    def _b_standard_deviation(M, M_mean, n, b):
+    def _b_std(M, M_mean, n, b):
         return 2.3 * math.pow(b, 2) * math.sqrt(np.sum(np.power(M - M_mean, 2)) / n * (n - 1))
+
+    #
+    #  x7 ( p_magnitude , pMag ) - Standard deviation of b-value
+    #
+
+    @staticmethod
+    def p_magnitude(b, m):
+        return pow(10, -b * m)
