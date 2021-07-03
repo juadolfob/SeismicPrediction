@@ -15,10 +15,9 @@ class CalculateFeatures:
     def __init__(self, df, n, trimFeatures=False, daysForward=14, daysBackward=7):
 
         # self variables
-        self.n = n
+        self.n = n # window size
         all_dates = np.array(df.Datetime, dtype="datetime64[s]")
         all_magnitudes = np.array(df.Magnitude)
-        self.total_events = len(df.index)
         self.a, self.b = self.gutenberg_richter_curve_fit(all_magnitudes)
         self.firstT = np.datetime64(df.Datetime.iloc[0], "s")
         self.lastT = np.datetime64(df.Datetime.iloc[-1], "s")

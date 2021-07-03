@@ -2,7 +2,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.patches import ConnectionPatch
 
-
 def b_slope_analysis(df, cut):
     fig, axes = plt.subplots(nrows=1, ncols=2)
     fig.suptitle('Minimum Year Analysis')
@@ -11,6 +10,7 @@ def b_slope_analysis(df, cut):
     fig.set_size_inches(12, 4)
     df.plot(ax=axes[0], title="full", x="Magnitude", y="counts")
     df_cut.plot(ax=axes[1], title="cut", x="Magnitude", y="counts")
+    plt.show()
 
 
 def minimum_year_analysis(df, years, ylim=None):
@@ -42,3 +42,5 @@ def minimum_year_analysis(df, years, ylim=None):
     for year in years:
         fig.add_artist(ConnectionPatch(xyA=[year, top], xyB=[year, bottom], coordsA="data", coordsB="data",
                                        axesA=axes[0], axesB=axes[4], color="green"))
+    plt.show()
+

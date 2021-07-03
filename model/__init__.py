@@ -1,2 +1,3 @@
 from . import parameters
-from . import calculate_features
+from .calculate_features import *
+from .feature_selection import *
