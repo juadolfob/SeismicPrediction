@@ -7,7 +7,7 @@ from PIL import Image
 matplotlib.use('Qt5Cairo')
 
 
-def showfig(fig):
+def show_fig(fig: matplotlib.figure.Figure):
     buf = io.BytesIO()
     fig.savefig(buf, format='png')
     buf.seek(0)
