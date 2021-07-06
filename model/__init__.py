@@ -1,11 +1,26 @@
 from . import parameters
 from .calculate_features import *
 from .feature_selection import *
+from .load_data import *
 
-FEATURES = ['meanMag', 'maxAMag', 'maxEMag', 'magDef', 'a', 'b', 'bStd', 'grcStd', 'elapsedT', 'rateSqrtEnergy',
-            'meanT', 'meanTStd', 'pTMag', 'zSeismicRateChange', 'bSeismicRateChange', 'lastDMaxMag']
+# DATA
+DATA_DTYPES = {'Magnitude': np.float64, 'Latitude': np.float64, 'Longitude': np.float64, 'Depth': np.float64}
+DATA_DATETIME = ['Datetime']
 
-TARGETS = ['nextDMaxMag']
-TARGETS = ['nextDGTMag']
+# MODEL
+F0_COLUMNS = ["old_index", "firstT", "lastT"]
+F1_COLUMNS = ["meanMag", "maxAMag", "maxEMag", "magDef", "a", "b", "bStd", "grcStd",
+              "elapsedT", "rateSqrtEnergy", "meanT", "meanTStd", "pMag"]
+C0_COLUMNS = F0_COLUMNS + F1_COLUMNS
+F2_COLUMNS = ["zSeismicRateChange", "bSeismicRateChange"]
+F3_COLUMNS = ["lastDMaxMag"]
+F4_COLUMNS = ["nextDMaxMag"]
+F5_COLUMNS = ["nextDMaxMag"]
 
-ALL_FEATURES = FEATURES + TARGETS
+# FEATURES
+FEATURES = F1_COLUMNS + F2_COLUMNS + F3_COLUMNS
+
+TARGETS_CONTINUOUS = F4_COLUMNS
+TARGETS_CATEGORICAL = F5_COLUMNS
+
+ALL_FEATURES = FEATURES + TARGETS_CATEGORICAL + TARGETS_CATEGORICAL
