@@ -1,5 +1,5 @@
 """
-Slope of Gutenberg-Richter curve
+Calculates Features
 """
 import math
 from collections import Iterable
@@ -10,8 +10,7 @@ import pandas as pd
 from numpy import longdouble
 from scipy.optimize import curve_fit
 import model
-ctypedef long long DTYPE_longlong_t
-
+from libcpp cimport bool as bool_t
 
 class CalculateFeatures:
     """
@@ -48,11 +47,11 @@ class CalculateFeatures:
         """
     def __init__(self,
                  df: pd.DataFrame,
-                 window_size: int,
-                 trim_features: bool = False,
-                 days_forward: int = 14,
-                 days_backward: int = 7,
-                 mag_threshold: float = 6):
+                 int window_size ,
+                 trim_features:bool  = False,
+                 int days_forward = 14,
+                 int days_backward = 7,
+                 float mag_threshold= 6.0):
 
         # self variables
         self.window_size = window_size  # window size
@@ -69,7 +68,7 @@ class CalculateFeatures:
         self.features = pd.DataFrame(
             [self._apply_features_agg(w) for w in df.rolling(window_size, min_periods=window_size) if
              len(w.index) == window_size],
-            columns=model.C0_COLUMNS)
+            columns=model.F1_COLUMNS)
 
         # Vectorization of Features
 
