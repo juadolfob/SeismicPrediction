@@ -38,8 +38,8 @@ def load_features_from_cache():
     """
 
     if features_in_cache():
-        df = pd.read_csv(cached_features_path, delimiter=',', dtype=model.DATA_DTYPES,
-                         parse_dates=model.DATA_DATETIME, date_parser=np.datetime64)
+        df = pd.read_csv(cached_features_path, delimiter=',', dtype=model.MODEL_DTYPES,
+                         parse_dates=model.MODEL_DATETIME, date_parser=np.datetime64)
     else:
         return False
 
