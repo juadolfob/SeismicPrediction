@@ -3,10 +3,14 @@
 """
 from itertools import chain
 
+from tensorflow import keras
+
 from . import parameters
 from .calculate_features import *
 from .feature_selection import *
 from .load_data import *
+from .predictor import *
+from .predictor import *
 
 # DATA
 
@@ -48,3 +52,20 @@ class TARGETS:
 
 
 ALL_FEATURES = FEATURES + TARGETS.CATEGORICAL + TARGETS.CATEGORICAL
+
+# MODELS
+
+METRICS = [
+    keras.metrics.TruePositives(name='tp'),
+    keras.metrics.FalsePositives(name='fp'),
+    keras.metrics.TrueNegatives(name='tn'),
+    keras.metrics.FalseNegatives(name='fn'),
+    keras.metrics.BinaryAccuracy(name='accuracy'),
+    keras.metrics.Precision(name='precision'),
+    keras.metrics.Recall(name='recall'),
+    keras.metrics.AUC(name='auc'),
+    keras.metrics.AUC(name='prc', curve='PR'),  # precision-recall curve
+]
+
+BATCH_SIZE = 2048
+EPOCHS = 200

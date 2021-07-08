@@ -35,3 +35,24 @@ def get_features():
         features =  CalculateFeatures(df, 50, trim_features=True, mag_threshold=6).features
         features.to_csv("../../model/features_cache/features.csv", index=False)
     return features
+
+
+"""
+embedding = Isomap(n_jobs=-1)
+X_transformed = embedding.fit_transform(X_norm32, Y_CATEGORICAL)
+
+"""
+
+"""
+%matplotlib qt
+
+fig, ax = plt.subplots()
+num_ticks = np.round((Y_CONTINUOUS_Scaler.data_max_ - Y_CONTINUOUS_Scaler.data_min_) * 10 + 1).astype(int)[0]
+labels = np.round(np.linspace(Y_CONTINUOUS_Scaler.data_min_, Y_CONTINUOUS_Scaler.data_max_, num=num_ticks).T[0], 1)
+ticks = np.linspace(0, 1, num=num_ticks)[np.isin(labels, np.unique(Y_CONTINUOUS))]
+cax = plt.scatter(X_transformed.T[0], X_transformed.T[1], s=sizes, color=colors_continuous)
+
+cbar = fig.colorbar(cax, ticks=ticks)
+cbar.ax.set_yticklabels(np.unique(Y_CONTINUOUS))
+plt.plot()
+"""
