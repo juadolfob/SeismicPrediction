@@ -23,7 +23,7 @@ DATA_DATETIME = ['Datetime']
 C0_COLUMNS = ["old_index"]
 C1_COLUMNS = ["firstT", "lastT"]
 C2_COLUMNS = ["elapsedT"]
-C3_COLUMNS = ["meanMag", "maxAMag", "maxEMag", "magDef", "a", "b", "bStd", "grcStd",
+C3_COLUMNS = ["meanMag", "maxMag", "maxEMag", "magDef", "a", "b", "bStd", "grcStd",
               "rateSqrtEnergy", "meanT", "meanTStd", "pMag"]
 F1_COLUMNS = list(chain(C0_COLUMNS, C1_COLUMNS, C2_COLUMNS, C3_COLUMNS))
 F2_COLUMNS = ["zSeismicRateChange", "bSeismicRateChange"]
@@ -51,7 +51,7 @@ class TARGETS:
     ALL = F4_COLUMNS + F5_COLUMNS
 
 
-ALL_FEATURES = FEATURES + TARGETS.CATEGORICAL + TARGETS.CATEGORICAL
+ALL_FEATURES = FEATURES + TARGETS.CONTINUOUS + TARGETS.CATEGORICAL
 
 # MODELS
 

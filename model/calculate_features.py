@@ -46,13 +46,14 @@ class CalculateFeatures:
         ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 
         """
+
     def __init__(self,
                  df: pd.DataFrame,
                  window_size,
                  mag_threshold,
                  trim_features: bool = False,
-                 days_forward = 14,
-                 days_backward = 7,
+                 days_forward=14,
+                 days_backward=7,
                  ):
 
         # self variables
@@ -116,11 +117,11 @@ class CalculateFeatures:
             grc_std = np.NaN
             b_std = np.NaN
 
-        max_actual_mag = np.max(magnitudes_array)
+        max_mag = np.max(magnitudes_array)
         max_expected_mag = a / b
         d_e = self.rate_square_root_energy(magnitudes_array, t)
         u = self.mean_time_difference(datetime_array)
-        mag_def = self.magnitude_deficit(max_actual_mag, a, b)
+        mag_def = self.magnitude_deficit(max_mag, a, b)
         p_mag_6 = self.p_magnitude(b, 6.0)
         c = self.mean_t_deviation(datetime_array, u)
         return [
@@ -129,7 +130,7 @@ class CalculateFeatures:
             datetime_array[-1],
             t,
             mean_mag,
-            max_actual_mag,
+            max_mag,
             max_expected_mag,
             mag_def,
             a,
@@ -164,7 +165,6 @@ class CalculateFeatures:
         else:
             _trimmed_features = self.features.drop([0, len(self.features.index) - 1, *_drop_index])
             return _trimmed_features.dropna()
-
 
     def _filter_index_dt(self, features_last_t_array):
         return self.features[
@@ -205,6 +205,12 @@ class CalculateFeatures:
 
     @staticmethod
     def gutenberg_richter_curve_fit(magnitude, n: int = None):
+        """
+        Use non-linear least squares to fit a gutenberg_richter_curve's values a and b, to data.
+        :param magnitude:
+        :param n:
+        :return:
+        """
         unique, counts = CalculateFeatures._cumcount_sorted_unique(magnitude, n)
 
         return curve_fit(CalculateFeatures.gutenberg_richter_law, unique, counts)[0]
@@ -214,7 +220,7 @@ class CalculateFeatures:
     #
 
     @staticmethod
-    def elapsed_time( datetimes_array):
+    def elapsed_time(datetimes_array):
         return (datetimes_array[-1] - datetimes_array[0]).astype(int)
 
     #
@@ -223,7 +229,7 @@ class CalculateFeatures:
     #
 
     @staticmethod
-    def rate_square_root_energy( magnitude, t):
+    def rate_square_root_energy(magnitude, t):
         return np.sum(np.power(10, 5.9 + .75 * magnitude)) / t
 
     #
@@ -231,7 +237,7 @@ class CalculateFeatures:
     #
 
     @staticmethod
-    def mean_time_difference( datetimes):
+    def mean_time_difference(datetimes):
         return np.mean(np.diff(datetimes).astype(float))
 
     #
@@ -296,7 +302,7 @@ class CalculateFeatures:
     #
 
     @staticmethod
-    def mean_square_deviation(m_unique,  m_count, n_events, a, b):
+    def mean_square_deviation(m_unique, m_count, n_events, a, b):
         return np.sum(np.power(np.log(m_count) - a - b * m_unique, 2)) / n_events - 1
 
     #
@@ -313,5 +319,5 @@ class CalculateFeatures:
     #
 
     @staticmethod
-    def p_magnitude(b,m):
+    def p_magnitude(b, m):
         return pow(10, -b * m)
