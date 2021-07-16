@@ -81,16 +81,16 @@ class CalculateFeatures:
 
         features_last_t_array = np.array(self.features.lastT, dtype='datetime64[s]')
         # F3_COLUMNS
-        self.features[model.F3_COLUMNS] = self._dt_max_magnitude(features_last_t_array,
+        self.features[model.F3_COLUMNS[0]] = self._dt_max_magnitude(features_last_t_array,
                                                                  -self.daysBackward, all_dates,
                                                                  all_magnitudes)
         # F4_COLUMNS
-        self.features[model.F4_COLUMNS] = self._dt_max_magnitude(features_last_t_array,
+        self.features[model.F4_COLUMNS[0]] = self._dt_max_magnitude(features_last_t_array,
                                                                  self.daysForward,
                                                                  all_dates,
                                                                  all_magnitudes)
         # F5_COLUMNS
-        self.features[model.F5_COLUMNS] = self.features[model.F4_COLUMNS] >= mag_threshold
+        self.features[model.F5_COLUMNS[0]] = self.features[model.F4_COLUMNS] >= mag_threshold
 
         # TRIM TIME AND Nan's
         if trim_features:
@@ -189,11 +189,14 @@ class CalculateFeatures:
 
     @staticmethod
     def gutenberg_richter_law(m, a, b):
-        with np.errstate(over='ignore'):
-            return np.power(10, a - b * m, dtype=longdouble)
+            return np.power(10, a - np.multiply(b, m, dtype=longdouble), dtype=longdouble)
 
     @staticmethod
-    def _cumcount_sorted_unique(array: Iterable, n: int = None):
+    def log_gutenberg_richter_law(m, a, b):
+            return a - np.multiply(b, m, dtype=longdouble)
+
+    @staticmethod
+    def _cumcount_sorted_unique(array: Iterable):
         unique, counts = np.unique(array, return_counts=True)
         view = np.flip(counts, 0)
         np.cumsum(view, 0, out=view)
@@ -201,19 +204,21 @@ class CalculateFeatures:
 
     @staticmethod
     def _gutenberg_richter_curve_fit(unique, counts):
-        return curve_fit(CalculateFeatures.gutenberg_richter_law, unique, counts)[0]
+        log_counts = np.log10(counts.astype(longdouble), dtype=longdouble)
+        return curve_fit(CalculateFeatures.log_gutenberg_richter_law, unique, log_counts)[0]
 
     @staticmethod
-    def gutenberg_richter_curve_fit(magnitude, n: int = None):
+    def gutenberg_richter_curve_fit(magnitude):
         """
         Use non-linear least squares to fit a gutenberg_richter_curve's values a and b, to data.
         :param magnitude:
         :param n:
         :return:
         """
-        unique, counts = CalculateFeatures._cumcount_sorted_unique(magnitude, n)
 
-        return curve_fit(CalculateFeatures.gutenberg_richter_law, unique, counts)[0]
+        unique, counts = CalculateFeatures._cumcount_sorted_unique(magnitude)
+        log_counts = np.log10(counts.astype(longdouble), dtype=longdouble)
+        return curve_fit(CalculateFeatures.log_gutenberg_richter_law, unique, log_counts)[0]
 
     #
     # T - Time elapsed for last “n” seismic events
