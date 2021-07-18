@@ -23,8 +23,9 @@ DATA_DATETIME = ['Datetime']
 C0_COLUMNS = ["old_index"]
 C1_COLUMNS = ["firstT", "lastT"]
 C2_COLUMNS = ["elapsedT"]
-C3_COLUMNS = ["meanMag", "maxMag", "maxEMag", "magDef", "a", "b", "bStd", "grcStd",
-              "rateSqrtEnergy", "meanT", "meanTStd", "pMag"]
+C3_COLUMNS = ["meanMag", "maxMag", "rateSqrtEnergy", "u", "c", "a_lsq", "a_mlk", "b_lsq",
+              "b_mlk", "maxEMag_lsq", "maxEMag_mlk", "magDef_lsq", "mag_def_mlk", "bStd_lsq",
+              "bStd_mlk", "grcStd_lsq", "grcStd_mlk", "pMag_lsq", "pMag_mlk"]
 F1_COLUMNS = list(chain(C0_COLUMNS, C1_COLUMNS, C2_COLUMNS, C3_COLUMNS))
 F2_COLUMNS = ["zSeismicRateChange", "bSeismicRateChange"]
 F3_COLUMNS = ["lastDMaxMag"]
@@ -50,6 +51,7 @@ class TARGETS:
     CATEGORICAL = F5_COLUMNS
     ALL = F4_COLUMNS + F5_COLUMNS
 
+
 ALL_FEATURES = FEATURES + TARGETS.CONTINUOUS + TARGETS.CATEGORICAL
 
 # MODELS
@@ -62,9 +64,10 @@ METRICS = [
     keras.metrics.BinaryAccuracy(name='accuracy'),
     keras.metrics.Precision(name='precision'),
     keras.metrics.Recall(name='recall'),
+keras.metrics.Recall(name='r2_score'),
     keras.metrics.AUC(name='auc'),
-    keras.metrics.AUC(name='prc', curve='PR'),  # precision-recall curve
+    keras.metrics.AUC(name='prc', curve='PR'),
 ]
 
-BATCH_SIZE = 2048
+BATCH_SIZE = 4096
 EPOCHS = 200

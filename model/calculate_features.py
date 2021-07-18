@@ -60,18 +60,17 @@ class CalculateFeatures:
         self.window_size = window_size  # window size
         all_dates = np.array(df.Datetime, dtype="datetime64[s]")
         all_magnitudes = np.array(df.Magnitude)
-        self.a, self.b = self.gutenberg_richter_curve_fit(all_magnitudes)
         self.firstT = np.datetime64(df.Datetime.iloc[0], "s")
         self.lastT = np.datetime64(df.Datetime.iloc[-1], "s")
         self.daysForward = np.timedelta64(days_forward, 'D')
         self.daysBackward = np.timedelta64(days_backward, 'D')
-        self.mag_threshold = mag_threshold  # todo implement new features with this
+        self.mag_threshold = mag_threshold
 
         # FEATURES
 
         # F1_COLUMNS
         self.features = pd.DataFrame(
-            [self._apply_features_agg(w) for w in df.rolling(window_size, min_periods=window_size) if
+            [self._apply_F1_features(w) for w in df.rolling(window_size, min_periods=window_size) if
              len(w.index) == window_size],
             columns=model.F1_COLUMNS)
 
@@ -82,13 +81,13 @@ class CalculateFeatures:
         features_last_t_array = np.array(self.features.lastT, dtype='datetime64[s]')
         # F3_COLUMNS
         self.features[model.F3_COLUMNS[0]] = self._dt_max_magnitude(features_last_t_array,
-                                                                 -self.daysBackward, all_dates,
-                                                                 all_magnitudes)
+                                                                    -self.daysBackward, all_dates,
+                                                                    all_magnitudes)
         # F4_COLUMNS
         self.features[model.F4_COLUMNS[0]] = self._dt_max_magnitude(features_last_t_array,
-                                                                 self.daysForward,
-                                                                 all_dates,
-                                                                 all_magnitudes)
+                                                                    self.daysForward,
+                                                                    all_dates,
+                                                                    all_magnitudes)
         # F5_COLUMNS
         self.features[model.F5_COLUMNS[0]] = self.features[model.F4_COLUMNS] >= mag_threshold
 
@@ -98,50 +97,83 @@ class CalculateFeatures:
 
         self.features.reset_index(inplace=True, drop=True)
 
-    def _apply_features_agg(self, df_group):
-        old_index = df_group.index.stop - 1
+    def _apply_F1_features(self, df_group):
         datetime_array = np.array(df_group.Datetime, dtype='datetime64[s]')
         magnitudes_array = np.array(df_group.Magnitude)
-        t = self.elapsed_time(datetime_array)
         this_window_size = len(df_group.index)
-        mean_mag = np.mean(magnitudes_array)
+        unique_M, unique_N = self._cumcount_sorted_unique(magnitudes_array)
+        unique_n = unique_M.shape[0]
+        log_unique_N = np.log10(unique_N.astype(longdouble), dtype=longdouble)
 
-        if this_window_size >= self.window_size:
-            unique, count = self._cumcount_sorted_unique(magnitudes_array)
-            a, b = self._gutenberg_richter_curve_fit(unique, count)
-            grc_std = self.mean_square_deviation(unique, count, this_window_size, a, b)
-            b_std = self._b_std(unique, mean_mag, this_window_size, b)
-        else:
-            a = np.NaN
-            b = np.NaN
-            grc_std = np.NaN
-            b_std = np.NaN
+        # F1 features
 
-        max_mag = np.max(magnitudes_array)
-        max_expected_mag = a / b
-        d_e = self.rate_square_root_energy(magnitudes_array, t)
+        oldIndex = df_group.index.stop - 1
+        firstT = datetime_array[0]
+        lastT = datetime_array[-1]
+        elapsedT = self.elapsed_time(datetime_array)
+        meanMag = np.mean(magnitudes_array)
+        maxMag = np.max(magnitudes_array)
+        rateSqrtEnergy = self.rate_square_root_energy(magnitudes_array, elapsedT)
         u = self.mean_time_difference(datetime_array)
-        mag_def = self.magnitude_deficit(max_mag, a, b)
-        p_mag_6 = self.p_magnitude(b, 6.0)
         c = self.mean_t_deviation(datetime_array, u)
+
+        b_lsq = self._b_lsq(log_unique_N, unique_M, unique_n)
+        a_lsq = np.sum(log_unique_N + b_lsq * unique_M) / unique_n
+        b_mlk = np.log10(np.e) / (meanMag - unique_M[0])
+        a_mlk = np.log10(np.sum(unique_N)) + b_mlk * unique_M[0]
+
+        # lsq
+
+        maxEMag_lsq = a_lsq / b_lsq
+        magDef_lsq = self.magnitude_deficit(maxMag, a_lsq, b_lsq)
+        bStd_lsq = self._b_std(unique_M, meanMag, this_window_size, b_lsq)
+        grcStd_lsq = self.mean_square_deviation(unique_M, unique_N, this_window_size, a_lsq, b_lsq)
+        pMag_lsq = self.p_magnitude(b_lsq, 6.0)
+
+        # mlk
+
+        maxEMag_mlk = a_mlk / b_mlk
+        magDef_mlk = self.magnitude_deficit(maxMag, a_mlk, b_mlk)
+        bStd_mlk = self._b_std(unique_M, meanMag, this_window_size, b_mlk)
+        grcStd_mlk = self.mean_square_deviation(unique_M, unique_N, this_window_size, a_mlk, b_mlk)
+        pMag_mlk = self.p_magnitude(b_mlk, 6.0)
+
         return [
-            old_index,
-            datetime_array[0],
-            datetime_array[-1],
-            t,
-            mean_mag,
-            max_mag,
-            max_expected_mag,
-            mag_def,
-            a,
-            b,
-            b_std,
-            grc_std,
-            d_e,
+            oldIndex,
+            firstT,
+            lastT,
+            elapsedT,
+            meanMag,
+            maxMag,
+            rateSqrtEnergy,
             u,
             c,
-            p_mag_6,
+            a_lsq,
+            a_mlk,
+            b_lsq,
+            b_mlk,
+            maxEMag_lsq,
+            maxEMag_mlk,
+            magDef_lsq,
+            magDef_mlk,
+            bStd_lsq,
+            bStd_mlk,
+            grcStd_lsq,
+            grcStd_mlk,
+            pMag_lsq,
+            pMag_mlk,
         ]
+
+    @staticmethod
+    def _b_lsq(log_unique_N,unique_M,unique_n):
+        return (unique_n * np.sum(unique_M * log_unique_N) - np.sum(unique_M) * np.sum(log_unique_N)) / ( np.power(np.sum(unique_M), 2) - (unique_n * np.sum(np.power(unique_M, 2))))
+
+    @staticmethod
+    def b_lsq(magnitude_array):
+        unique_M, unique_N = model.CalculateFeatures._cumcount_sorted_unique(magnitude_array)
+        unique_n = unique_M.shape[0]
+        log_unique_N = np.log10(unique_N.astype(longdouble), dtype=longdouble)
+        return model.CalculateFeatures._b_lsq(log_unique_N,unique_M,unique_n)
 
     def _rolling_2_features_apply(self, _rolling_2_index):
         z_seismic_rate_change = [np.NaN]
@@ -189,11 +221,11 @@ class CalculateFeatures:
 
     @staticmethod
     def gutenberg_richter_law(m, a, b):
-            return np.power(10, a - np.multiply(b, m, dtype=longdouble), dtype=longdouble)
+        return np.power(10, a - np.multiply(b, m, dtype=longdouble), dtype=longdouble)
 
     @staticmethod
     def log_gutenberg_richter_law(m, a, b):
-            return a - np.multiply(b, m, dtype=longdouble)
+        return a - np.multiply(b, m, dtype=longdouble)
 
     @staticmethod
     def _cumcount_sorted_unique(array: Iterable):

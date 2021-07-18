@@ -86,3 +86,6 @@ class SelectFeatures:
     def __iter__(self):
         return self.selected_features.__iter__()
 
+    def __len__(self):
+        return self.selected_features.__len__()
+

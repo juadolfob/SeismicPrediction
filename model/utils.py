@@ -4,8 +4,8 @@ from matplotlib.patches import ConnectionPatch
 import pandas as pd
 import model
 
-
 def b_slope_analysis(df, cut):
+    plt.rcParams.update({'font.size': 22})
     fig, axes = plt.subplots(nrows=1, ncols=2)
     fig.suptitle('Minimum Year Analysis')
     df = df[["Magnitude"]].groupby(["Magnitude"]).size().reset_index(name='counts')
@@ -19,6 +19,7 @@ def b_slope_analysis(df, cut):
 
 
 def minimum_year_analysis(df, years, ylim=None):
+    plt.rcParams.update({'font.size': 22})
     if ylim:
         df = df[
             (df.Datetime.dt.year >= ylim[0]) &
@@ -28,15 +29,14 @@ def minimum_year_analysis(df, years, ylim=None):
     df_yearly_magnitude_mean = df_yearly_magnitude.mean()
     df_yearly_count = df_yearly_magnitude.count()
     df_yearly_variance = df_yearly_magnitude.var()
-    df_yearly_curve_val_b = df_yearly_magnitude.apply(
-        lambda x: model.CalculateFeatures.gutenberg_richter_curve_fit(x)[1] if x.shape[0] > 2 else 0)
+    df_yearly_curve_val_b = df_yearly_magnitude.apply(lambda x:model.CalculateFeatures.b_lsq(x))
     df_yearly_min = df_yearly_magnitude.min()
     fig, axes = plt.subplots(nrows=5, ncols=1)
     fig.suptitle('Minimum Year Analysis')
     fig.set_size_inches(12, 8)
     df_yearly_magnitude_mean.plot(ax=axes[0], kind="line", xlabel="", title="Magnitude Mean", legend=[])
     df_yearly_count.plot(ax=axes[1], kind="line", title="Count", xlabel="", xticks=[])
-    df_yearly_curve_val_b.plot(ax=axes[2], kind="line", title="b-value", xlabel="2", xticks=[])
+    df_yearly_curve_val_b.plot(ax=axes[2], kind="line", title="b-value", xlabel="", xticks=[])
     df_yearly_min.plot(ax=axes[3], kind="line", title="MinMag", xlabel="", xticks=[])
     df_yearly_variance.plot(ax=axes[4], kind="line", title="Variance")
     axes[0].xaxis.set_ticks_position('top')
@@ -48,4 +48,6 @@ def minimum_year_analysis(df, years, ylim=None):
     for year in years:
         fig.add_artist(ConnectionPatch(xyA=[year, top], xyB=[year, bottom], coordsA="data", coordsB="data",
                                        axesA=axes[0], axesB=axes[4], color="green"))
+
+
     plt.show()
