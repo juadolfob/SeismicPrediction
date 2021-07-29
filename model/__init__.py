@@ -1,16 +1,13 @@
-"""
 
-"""
+from dataclasses import dataclass
 from itertools import chain
-
-from tensorflow import keras
-
 from . import parameters
 from .calculate_features import *
 from .feature_selection import *
 from .load_data import *
 from .predictor import *
 from .predictor import *
+from .metrics import *
 
 # DATA
 
@@ -19,12 +16,11 @@ DATA_DATETIME = ['Datetime']
 
 # MODEL
 
-
 C0_COLUMNS = ["old_index"]
 C1_COLUMNS = ["firstT", "lastT"]
 C2_COLUMNS = ["elapsedT"]
 C3_COLUMNS = ["meanMag", "maxMag", "rateSqrtEnergy", "u", "c", "a_lsq", "a_mlk", "b_lsq",
-              "b_mlk", "maxEMag_lsq", "maxEMag_mlk", "magDef_lsq", "mag_def_mlk", "bStd_lsq",
+                  "b_mlk", "maxEMag_lsq", "maxEMag_mlk", "magDef_lsq", "mag_def_mlk", "bStd_lsq",
               "bStd_mlk", "grcStd_lsq", "grcStd_mlk", "pMag_lsq", "pMag_mlk"]
 F1_COLUMNS = list(chain(C0_COLUMNS, C1_COLUMNS, C2_COLUMNS, C3_COLUMNS))
 F2_COLUMNS = ["zSeismicRateChange", "bSeismicRateChange"]
@@ -38,7 +34,6 @@ MODEL_DTYPES = {feature: int for feature in C0_COLUMNS + C2_COLUMNS} | \
 MODEL_DATETIME = C1_COLUMNS
 
 # FEATURES
-
 
 FEATURES = list(chain(C2_COLUMNS, C3_COLUMNS, F2_COLUMNS, F3_COLUMNS))
 
@@ -56,18 +51,24 @@ ALL_FEATURES = FEATURES + TARGETS.CONTINUOUS + TARGETS.CATEGORICAL
 
 # MODELS
 
-METRICS = [
-    keras.metrics.TruePositives(name='tp'),
-    keras.metrics.FalsePositives(name='fp'),
-    keras.metrics.TrueNegatives(name='tn'),
-    keras.metrics.FalseNegatives(name='fn'),
-    keras.metrics.BinaryAccuracy(name='accuracy'),
-    keras.metrics.Precision(name='precision'),
-    keras.metrics.Recall(name='recall'),
-keras.metrics.Recall(name='r2_score'),
-    keras.metrics.AUC(name='auc'),
-    keras.metrics.AUC(name='prc', curve='PR'),
-]
-
 BATCH_SIZE = 4096
 EPOCHS = 200
+
+# coordinates
+
+
+@dataclass
+class REGION:
+    @dataclass
+    class SOUTH:
+        x1 = -110.25
+        y1 = 22.25
+        x2 = -87
+        y2 = 13
+
+    @dataclass
+    class NORTH:
+        x1 = -120
+        y1 = 33.25
+        x2 = -104
+        y2 = 22.25

@@ -58,7 +58,7 @@ class CalculateFeatures:
 
         # self variables
         self.window_size = window_size  # window size
-        all_dates = np.array(df.Datetime, dtype="datetime64[s]")
+        self.all_dates = np.array(df.Datetime, dtype="datetime64[s]")
         all_magnitudes = np.array(df.Magnitude)
         self.firstT = np.datetime64(df.Datetime.iloc[0], "s")
         self.lastT = np.datetime64(df.Datetime.iloc[-1], "s")
@@ -75,18 +75,20 @@ class CalculateFeatures:
             columns=model.F1_COLUMNS)
 
         self._rolling_2_indexes = npext.rolling(self.features.index.to_numpy(), 2, as_array=True, skip_na=True)
+        
         # F2_COLUMNS
+        # todo try apply for last n, not for last window with n events, and compare results
         self.features[model.F2_COLUMNS] = np.array(self._rolling_2_features_apply(self._rolling_2_indexes)).T
 
         features_last_t_array = np.array(self.features.lastT, dtype='datetime64[s]')
         # F3_COLUMNS
         self.features[model.F3_COLUMNS[0]] = self._dt_max_magnitude(features_last_t_array,
-                                                                    -self.daysBackward, all_dates,
+                                                                    -self.daysBackward, self.all_dates,
                                                                     all_magnitudes)
         # F4_COLUMNS
         self.features[model.F4_COLUMNS[0]] = self._dt_max_magnitude(features_last_t_array,
                                                                     self.daysForward,
-                                                                    all_dates,
+                                                                    self.all_dates,
                                                                     all_magnitudes)
         # F5_COLUMNS
         self.features[model.F5_COLUMNS[0]] = self.features[model.F4_COLUMNS] >= mag_threshold
@@ -107,7 +109,7 @@ class CalculateFeatures:
 
         # F1 features
 
-        oldIndex = df_group.index.stop - 1
+        oldIndex = df_group.index[-1]
         firstT = datetime_array[0]
         lastT = datetime_array[-1]
         elapsedT = self.elapsed_time(datetime_array)
@@ -118,7 +120,7 @@ class CalculateFeatures:
         c = self.mean_t_deviation(datetime_array, u)
 
         b_lsq = self._b_lsq(log_unique_N, unique_M, unique_n)
-        a_lsq = np.sum(log_unique_N + b_lsq * unique_M) / unique_n
+        a_lsq = self._a_lsq(log_unique_N, unique_M, unique_n, b_lsq)
         b_mlk = np.log10(np.e) / (meanMag - unique_M[0])
         a_mlk = np.log10(np.sum(unique_N)) + b_mlk * unique_M[0]
 
@@ -165,15 +167,28 @@ class CalculateFeatures:
         ]
 
     @staticmethod
-    def _b_lsq(log_unique_N,unique_M,unique_n):
-        return (unique_n * np.sum(unique_M * log_unique_N) - np.sum(unique_M) * np.sum(log_unique_N)) / ( np.power(np.sum(unique_M), 2) - (unique_n * np.sum(np.power(unique_M, 2))))
+    def _b_lsq(log_unique_N, unique_M, unique_n):
+        return (unique_n * np.sum(unique_M * log_unique_N) - np.sum(unique_M) * np.sum(log_unique_N)) / (
+                    np.power(np.sum(unique_M), 2) - (unique_n * np.sum(np.power(unique_M, 2))))
 
     @staticmethod
     def b_lsq(magnitude_array):
         unique_M, unique_N = model.CalculateFeatures._cumcount_sorted_unique(magnitude_array)
         unique_n = unique_M.shape[0]
         log_unique_N = np.log10(unique_N.astype(longdouble), dtype=longdouble)
-        return model.CalculateFeatures._b_lsq(log_unique_N,unique_M,unique_n)
+        return model.CalculateFeatures._b_lsq(log_unique_N, unique_M, unique_n)
+
+    @staticmethod
+    def _a_lsq(log_unique_N, unique_M, unique_n, b_lsq):
+        return np.sum(log_unique_N + b_lsq * unique_M) / unique_n
+
+    @staticmethod
+    def a_lsq(magnitude_array):
+        unique_M, unique_N = model.CalculateFeatures._cumcount_sorted_unique(magnitude_array)
+        unique_n = unique_M.shape[0]
+        log_unique_N = np.log10(unique_N.astype(longdouble), dtype=longdouble)
+        b_lsq = CalculateFeatures._b_lsq(log_unique_N, unique_M, unique_n)
+        return CalculateFeatures._a_lsq(log_unique_N, unique_M, unique_n, b_lsq)
 
     def _rolling_2_features_apply(self, _rolling_2_index):
         z_seismic_rate_change = [np.NaN]
@@ -190,12 +205,11 @@ class CalculateFeatures:
         return self._trim_features(features_last_t_array, inplace=False)
 
     def _trim_features(self, features_last_t_array, inplace=True):
-        _drop_index = self._filter_index_dt(features_last_t_array)
         if inplace:
-            self.features.drop([0, len(self.features.index) - 1, *_drop_index], inplace=True)
+            self.features.drop([*_drop_index], inplace=True)
             self.features.dropna(inplace=True)
         else:
-            _trimmed_features = self.features.drop([0, len(self.features.index) - 1, *_drop_index])
+            _trimmed_features = self.features.drop([*_drop_index])
             return _trimmed_features.dropna()
 
     def _filter_index_dt(self, features_last_t_array):
