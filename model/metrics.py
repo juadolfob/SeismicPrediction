@@ -1,7 +1,6 @@
-import sklearn
 import tensorflow as tf
-from tensorflow.python.ops import init_ops
 from tensorflow import keras
+from tensorflow.python.ops import init_ops
 
 
 class NegativePredictiveValue(tf.keras.metrics.Metric):
@@ -54,7 +53,7 @@ class RScore(tf.keras.metrics.Metric):
 
     def result(self):
         return ((self.true_positives * self.true_negatives) - (self.false_positives * self.false_negatives)) / (
-                    (self.true_positives + self.false_negatives) * (self.false_positives + self.true_negatives))
+                (self.true_positives + self.false_negatives) * (self.false_positives + self.true_negatives))
 
     def reset_state(self):
         self.true_positives.assign(0)
@@ -88,11 +87,11 @@ class MCC(tf.keras.metrics.Metric):
 
     def result(self):
         return ((self.true_positives * self.true_negatives) - (self.false_positives * self.false_negatives)) / tf.sqrt((
-                                                                                                                                   (
-                                                                                                                                               self.true_positives + self.false_positives) * (
-                                                                                                                                               self.true_positives + self.false_negatives) * (
-                                                                                                                                               self.true_negatives + self.false_positives) * (
-                                                                                                                                               self.true_negatives + self.false_negatives)))
+                (
+                        self.true_positives + self.false_positives) * (
+                        self.true_positives + self.false_negatives) * (
+                        self.true_negatives + self.false_positives) * (
+                        self.true_negatives + self.false_negatives)))
 
     def reset_state(self):
         self.true_positives.assign(0)
@@ -124,6 +123,34 @@ class FalsePositiveRate(tf.keras.metrics.Metric):
         self.true_negatives.assign(0)
         self.false_positives.assign(0)
 
+class f1_score(tf.keras.metrics.Metric):
+
+    def __init__(self, name='f1_score', **kwargs):
+        super(f1_score, self).__init__(name=name, **kwargs)
+        self.true_positives = self.add_weight('true_positives', initializer=init_ops.zeros_initializer)
+        self.false_positives = self.add_weight('false_positives', initializer=init_ops.zeros_initializer)
+        self.false_negatives = self.add_weight('false_negatives', initializer=init_ops.zeros_initializer)
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        y_true = tf.cast(y_true, tf.bool)
+        y_pred = tf.cast(tf.round(y_pred), tf.bool)
+        self.true_positives.assign_add(tf.reduce_sum(tf.cast(tf.logical_and(tf.equal(y_pred, True),
+                                                                            tf.equal(y_pred, y_true)), tf.float32)))
+        self.false_positives.assign_add(tf.reduce_sum(tf.cast(tf.logical_and(tf.equal(y_pred, True),
+                                                                             tf.not_equal(y_pred, y_true)),
+                                                              tf.float32)))
+        self.false_negatives.assign_add(tf.reduce_sum(tf.cast(tf.logical_and(tf.equal(y_pred, False),
+                                                                             tf.not_equal(y_pred, y_true)),
+                                                              tf.float32)))
+
+    def result(self):
+        return self.true_positives / (
+                    self.true_positives + (self.false_positives + self.false_negatives) / tf.cast(2.0, tf.float32))
+
+    def reset_state(self):
+        self.true_positives.assign(0)
+        self.false_positives.assign(0)
+        self.false_negatives.assign(0)
 
 METRICS = [
     keras.metrics.TruePositives(name='tp'),
@@ -133,7 +160,7 @@ METRICS = [
     keras.metrics.BinaryAccuracy(name='Accuracy'),
     keras.metrics.Precision(name='Precision'),
     keras.metrics.Recall(name='Recall'),
-    sklearn.metrics.f1_score,
+    f1_score(name='F1_score'),
     NegativePredictiveValue(name='NPV'),
     RScore(name='R score'),
     MCC(name='MCC'),
