@@ -75,7 +75,7 @@ class CalculateFeatures:
             columns=model.F1_COLUMNS)
 
         self._rolling_2_indexes = npext.rolling(self.features.index.to_numpy(), 2, as_array=True, skip_na=True)
-        
+
         # F2_COLUMNS
         # todo try apply for last n, not for last window with n events, and compare results
         self.features[model.F2_COLUMNS] = np.array(self._rolling_2_features_apply(self._rolling_2_indexes)).T
@@ -169,7 +169,7 @@ class CalculateFeatures:
     @staticmethod
     def _b_lsq(log_unique_N, unique_M, unique_n):
         return (unique_n * np.sum(unique_M * log_unique_N) - np.sum(unique_M) * np.sum(log_unique_N)) / (
-                    np.power(np.sum(unique_M), 2) - (unique_n * np.sum(np.power(unique_M, 2))))
+                np.power(np.sum(unique_M), 2) - (unique_n * np.sum(np.power(unique_M, 2))))
 
     @staticmethod
     def b_lsq(magnitude_array):
@@ -205,6 +205,7 @@ class CalculateFeatures:
         return self._trim_features(features_last_t_array, inplace=False)
 
     def _trim_features(self, features_last_t_array, inplace=True):
+        _drop_index = self._filter_index_dt(features_last_t_array)
         if inplace:
             self.features.drop([*_drop_index], inplace=True)
             self.features.dropna(inplace=True)

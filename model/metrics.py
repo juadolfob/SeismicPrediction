@@ -1,5 +1,5 @@
+import sklearn
 import tensorflow as tf
-
 from tensorflow.python.ops import init_ops
 from tensorflow import keras
 
@@ -133,12 +133,11 @@ METRICS = [
     keras.metrics.BinaryAccuracy(name='Accuracy'),
     keras.metrics.Precision(name='Precision'),
     keras.metrics.Recall(name='Recall'),
-    keras.metrics.f1_score(name='F1'),
+    sklearn.metrics.f1_score,
     NegativePredictiveValue(name='NPV'),
     RScore(name='R score'),
     MCC(name='MCC'),
     FalsePositiveRate(name='FPR'),
     keras.metrics.AUC(name='auc'),
     keras.metrics.AUC(name='prc', curve='PR'),
-
 ]
