@@ -1,13 +1,13 @@
 
 from dataclasses import dataclass
 from itertools import chain
-from . import parameters
 from .calculate_features import *
 from .feature_selection import *
 from .load_data import *
 from .predictor import *
 from .predictor import *
 from .metrics import *
+from .plot_helper import *
 
 # DATA
 
